@@ -22,12 +22,11 @@ jobs:
           dotnet-version: '7.x'
           include-prerelease: true
 
-      - name: Build with dotnet
-        working-directory: ReverseProxySln
-        run: dotnet build --configuration Release
+      - name: Build with dotnet        
+        run: dotnet build ReverseProxySln\ReverseProxyApi\ReverseProxyApi.csproj --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish ReverseProxySln\ReverseProxyApi\ReverseProxyApi.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v2
