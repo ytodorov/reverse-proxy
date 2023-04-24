@@ -1,5 +1,5 @@
 
-using ReverseProxyApi.Middlewares;
+using ReverseProxy.Core.Middlewares;
 using System.Net.Http.Headers;
 
 namespace ReverseProxyApi
@@ -10,7 +10,7 @@ namespace ReverseProxyApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddHttpClient("CustomHttpClient", client =>
+            builder.Services.AddHttpClient(nameof(LoadBalancerMiddleware), client =>
             {
                 // Set a timeout for requests
                 // https://learn.microsoft.com/en-us/troubleshoot/azure/app-service/web-apps-performance-faqs#why-does-my-request-time-out-after-230-seconds
