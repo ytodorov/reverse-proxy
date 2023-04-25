@@ -9,6 +9,6 @@ namespace ReverseProxy.Core.Interfaces
 {
     public interface ILoadBalancerStrategy
     {
-        UriWithHash GetNextServerUri();
+        Uri GetNextServerUri();
     }
 }

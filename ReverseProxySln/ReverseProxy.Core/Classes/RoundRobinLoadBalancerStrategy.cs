@@ -10,7 +10,7 @@ namespace ReverseProxy.Core.Classes
 {
     public class RoundRobinLoadBalancerStrategy : ILoadBalancerStrategy
     {
-        private readonly IReadOnlyList<UriWithHash> _serverUris;
+        private readonly IDictionary<string, Uri> _serverUris;
         private static int _currentServerIndex = 0;        
 
         public RoundRobinLoadBalancerStrategy(IServerUriProvider serverUriProvider)
@@ -18,10 +18,14 @@ namespace ReverseProxy.Core.Classes
             _serverUris = serverUriProvider.GetServerUris();
         }
 
-        public UriWithHash GetNextServerUri()
+        public Uri GetNextServerUri()
         {
-            var serverUri = _serverUris[_currentServerIndex];
-            // Important to handle many concurrent request
+            if (_currentServerIndex >= _serverUris.Count)
+            {
+                _currentServerIndex = _currentServerIndex % _serverUris.Count;
+            }
+            var serverUri = _serverUris.ElementAt(_currentServerIndex).Value;
+            // Important to handle many concurrent requests
             Interlocked.Increment(ref _currentServerIndex);
             _currentServerIndex = _currentServerIndex % _serverUris.Count;
 

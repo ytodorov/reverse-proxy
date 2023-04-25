@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using ReverseProxy.Core.Classes;
 using ReverseProxy.Core.Interfaces;
+using System.Collections.ObjectModel;
 using System.Diagnostics.Metrics;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -11,7 +12,7 @@ namespace ReverseProxy.Core.Middlewares
     {
         private readonly RequestDelegate _next;
         private readonly IHttpClientFactory _clientFactory;
-        private readonly IReadOnlyList<UriWithHash> _serverUris;
+        private readonly IDictionary<string, Uri> _serverUris;
         private readonly ILoadBalancerStrategy _loadBalancerStrategy;
 
         private readonly string _sessionCookieName = "ReverseProxy_StickySession";
@@ -35,13 +36,16 @@ namespace ReverseProxy.Core.Middlewares
             // In Azure: ARRAffinity=d8ee64705542e2375ca834082505a2e598ec41611f45c9bed1a774ccbbc582a9; ARRAffinitySameSite=d8ee64705542e2375ca834082505a2e598ec41611f45c9bed1a774ccbbc582a9
             if (context.Request.Cookies.TryGetValue(_sessionCookieName, out string sessionId))
             {
-                serverUri = _serverUris.FirstOrDefault(f => f.Hash.Equals(sessionId, StringComparison.OrdinalIgnoreCase))?.Uri;
+                if (_serverUris.ContainsKey(sessionId))
+                {
+                    serverUri = _serverUris[sessionId];
+                }
             }
             if (serverUri == null)
             {
-                var uriWithHash = _loadBalancerStrategy.GetNextServerUri();
-                serverUri = uriWithHash.Uri;
-                context.Response.Cookies.Append(_sessionCookieName, uriWithHash.Hash, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax });
+                serverUri = _loadBalancerStrategy.GetNextServerUri();
+                var hash = _serverUris.FirstOrDefault(f => f.Value == serverUri).Key;
+                context.Response.Cookies.Append(_sessionCookieName, hash, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax });
             }
 
             var requestUri = new Uri(serverUri, context.Request.Path);

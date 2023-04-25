@@ -9,6 +9,6 @@ namespace ReverseProxy.Core.Interfaces
 {
     public interface IServerUriProvider
     {
-        public IReadOnlyList<UriWithHash> GetServerUris();
+        public IDictionary<string, Uri> GetServerUris();
     }
 }
