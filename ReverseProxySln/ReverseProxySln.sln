@@ -9,9 +9,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReverseProxy.Core", "Revers
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReverseProxy.Tests", "ReverseProxy.Tests\ReverseProxy.Tests.csproj", "{DC6844F7-62B2-48D7-91D4-1F5D03F70611}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReverseProxy.MinimalApi", "ReverseProxy.MinimalApi\ReverseProxy.MinimalApi.csproj", "{2B457759-2B29-4FCA-839D-643FDA01423A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReverseProxy.MinimalApi", "ReverseProxy.MinimalApi\ReverseProxy.MinimalApi.csproj", "{2B457759-2B29-4FCA-839D-643FDA01423A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReverseProxy.Docker.MinimalApi", "ReverseProxy.Docker.MinimalApi\ReverseProxy.Docker.MinimalApi.csproj", "{F2458AD8-57AC-44EC-92C2-A3AEA14E1720}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReverseProxy.Docker.MinimalApi", "ReverseProxy.Docker.MinimalApi\ReverseProxy.Docker.MinimalApi.csproj", "{F2458AD8-57AC-44EC-92C2-A3AEA14E1720}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleApi", "SampleApi\SampleApi.csproj", "{D351A490-B556-4D8A-81B4-DBD60653B331}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{F2458AD8-57AC-44EC-92C2-A3AEA14E1720}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F2458AD8-57AC-44EC-92C2-A3AEA14E1720}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F2458AD8-57AC-44EC-92C2-A3AEA14E1720}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D351A490-B556-4D8A-81B4-DBD60653B331}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D351A490-B556-4D8A-81B4-DBD60653B331}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D351A490-B556-4D8A-81B4-DBD60653B331}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D351A490-B556-4D8A-81B4-DBD60653B331}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -14,36 +14,38 @@ namespace ReverseProxy.Core.Middlewares
         private readonly IHttpClientFactory _clientFactory;
         private readonly IDictionary<string, Uri> _serverUris;
         private readonly ILoadBalancerStrategy _loadBalancerStrategy;
+        private readonly IStickySession _stickySession;
 
         private readonly string _sessionCookieName = "ReverseProxy_StickySession";
         public LoadBalancerMiddleware(RequestDelegate next,
             IHttpClientFactory clientFactory,
             IServerUriProvider serverUriProvider,
-            ILoadBalancerStrategy loadBalancerStrategy
+            ILoadBalancerStrategy loadBalancerStrategy,
+            IStickySession stickySession
             )
         {
             _next = next;
             _clientFactory = clientFactory;
             _serverUris = serverUriProvider.GetServerUris();
             _loadBalancerStrategy = loadBalancerStrategy;
+            _stickySession = stickySession;
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
             //var serverUri = _loadBalancerStrategy.GetNextServerUri();
-            Uri serverUri = null;
+            Uri serverUri = _loadBalancerStrategy.GetNextServerUri();
 
-            // In Azure: ARRAffinity=d8ee64705542e2375ca834082505a2e598ec41611f45c9bed1a774ccbbc582a9; ARRAffinitySameSite=d8ee64705542e2375ca834082505a2e598ec41611f45c9bed1a774ccbbc582a9
-            if (context.Request.Cookies.TryGetValue(_sessionCookieName, out string sessionId))
+            if (_stickySession.IsStickySessionEnabled())
             {
-                if (_serverUris.ContainsKey(sessionId))
+                // In Azure: ARRAffinity=d8ee64705542e2375ca834082505a2e598ec41611f45c9bed1a774ccbbc582a9; ARRAffinitySameSite=d8ee64705542e2375ca834082505a2e598ec41611f45c9bed1a774ccbbc582a9
+                if (context.Request.Cookies.TryGetValue(_sessionCookieName, out string hashedServerUri))
                 {
-                    serverUri = _serverUris[sessionId];
+                    if (_serverUris.ContainsKey(hashedServerUri))
+                    {
+                        serverUri = _serverUris[hashedServerUri];
+                    }
                 }
-            }
-            if (serverUri == null)
-            {
-                serverUri = _loadBalancerStrategy.GetNextServerUri();
                 var hash = _serverUris.FirstOrDefault(f => f.Value == serverUri).Key;
                 context.Response.Cookies.Append(_sessionCookieName, hash, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax });
             }

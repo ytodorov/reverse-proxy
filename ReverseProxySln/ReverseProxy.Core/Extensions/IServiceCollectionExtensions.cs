@@ -16,6 +16,10 @@ namespace ReverseProxy.Core.Extensions
         {
             services.AddSingleton<IServerUriProvider, ConfigurationServerUriProvider>();
             services.AddSingleton<ILoadBalancerStrategy, RoundRobinLoadBalancerStrategy>();
+            services.AddSingleton<IStickySession, StickySessionDisabled>();
+            // Change this to the following line to enable sticky sessions
+            //services.AddSingleton<IStickySession, StickySessionEnabled>();
+
             services.AddHttpClient(nameof(LoadBalancerMiddleware), client =>
             {
                 // Set a timeout for requests
