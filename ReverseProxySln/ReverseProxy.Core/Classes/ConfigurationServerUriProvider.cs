@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using ReverseProxy.Core.Extensions;
 using ReverseProxy.Core.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,7 @@ namespace ReverseProxy.Core.Classes
             _configuration = configuration;
         }
 
-        public IReadOnlyList<Uri> GetServerUris()
+        public IReadOnlyList<UriWithHash> GetServerUris()
         {
             var serverUrisSection = _configuration.GetSection("LoadBalancer:ServerUris");
             if (serverUrisSection == null)
@@ -30,16 +31,20 @@ namespace ReverseProxy.Core.Classes
             {
                 throw new InvalidOperationException("No server URIs configured in the 'LoadBalancer:ServerUris' section.");
             }
-
-            var serverUris = new List<Uri>(serverUriStrings.Count);
+            var serverUris = new List<UriWithHash>(serverUriStrings.Count);
             foreach (var uriString in serverUriStrings)
             {
                 if (!Uri.TryCreate(uriString, UriKind.Absolute, out var serverUri))
                 {
                     throw new InvalidOperationException($"Invalid URI '{uriString}' in the 'LoadBalancer:ServerUris' section.");
                 }
+                UriWithHash uriWithHash = new UriWithHash()
+                {
+                    Uri = serverUri,
+                    Hash = serverUri.ToString().CalculateSHA256()
+                };
 
-                serverUris.Add(serverUri);
+                serverUris.Add(uriWithHash);
             }
 
             return serverUris.AsReadOnly();

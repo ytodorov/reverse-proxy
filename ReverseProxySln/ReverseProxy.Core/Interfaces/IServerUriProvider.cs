@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ReverseProxy.Core.Classes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,6 @@ namespace ReverseProxy.Core.Interfaces
 {
     public interface IServerUriProvider
     {
-        public IReadOnlyList<Uri> GetServerUris();
+        public IReadOnlyList<UriWithHash> GetServerUris();
     }
 }
