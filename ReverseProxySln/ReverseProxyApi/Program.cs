@@ -13,6 +13,7 @@ namespace ReverseProxyApi
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.AddSingleton<IServerUriProvider, ConfigurationServerUriProvider>();
+            builder.Services.AddSingleton<ILoadBalancerStrategy, RoundRobinLoadBalancerStrategy>();
             builder.Services.AddHttpClient(nameof(LoadBalancerMiddleware), client =>
             {
                 // Set a timeout for requests

@@ -10,19 +10,23 @@ namespace ReverseProxy.Core.Middlewares
         private readonly RequestDelegate _next;
         private readonly IHttpClientFactory _clientFactory;
         private readonly IReadOnlyList<Uri> _serverUris;
+        private readonly ILoadBalancerStrategy _loadBalancerStrategy;
 
-        private static int _currentServerIndex = 0;
-
-        public LoadBalancerMiddleware(RequestDelegate next, IHttpClientFactory clientFactory, IServerUriProvider serverUriProvider)
+        public LoadBalancerMiddleware(RequestDelegate next,
+            IHttpClientFactory clientFactory,
+            IServerUriProvider serverUriProvider,
+            ILoadBalancerStrategy loadBalancerStrategy
+            )
         {
             _next = next;
             _clientFactory = clientFactory;
             _serverUris = serverUriProvider.GetServerUris();
+            _loadBalancerStrategy = loadBalancerStrategy;
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
-            var serverUri = GetNextServerUri();
+            var serverUri = _loadBalancerStrategy.GetNextServerUri();
             var requestUri = new Uri(serverUri, context.Request.Path);
             var httpClient = _clientFactory.CreateClient(nameof(LoadBalancerMiddleware));
 
@@ -33,16 +37,6 @@ namespace ReverseProxy.Core.Middlewares
             context.Response.StatusCode = (int)responseMessage.StatusCode;
             var responseContent = await responseMessage.Content.ReadAsByteArrayAsync();
             await context.Response.Body.WriteAsync(responseContent, 0, responseContent.Length);
-        }
-
-        private Uri GetNextServerUri()
-        {
-            var serverUri = _serverUris[_currentServerIndex];
-            // Important to handle many concurrent request
-            Interlocked.Increment(ref _currentServerIndex);
-            _currentServerIndex = _currentServerIndex % _serverUris.Count;
-            
-            return serverUri;
         }
     }
 }
