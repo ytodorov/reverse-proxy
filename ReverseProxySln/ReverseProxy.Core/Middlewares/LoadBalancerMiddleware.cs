@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using ReverseProxy.Core.Interfaces;
 using System.Net.Http;
 
 namespace ReverseProxy.Core.Middlewares
@@ -7,21 +8,15 @@ namespace ReverseProxy.Core.Middlewares
     {
         private readonly RequestDelegate _next;
         private readonly IHttpClientFactory _clientFactory;
+        private readonly IReadOnlyList<Uri> _serverUris;
 
-        private static List<Uri> _serverUris;
         private static int _currentServerIndex = 0;
 
-        public LoadBalancerMiddleware(RequestDelegate next, IHttpClientFactory clientFactory)
+        public LoadBalancerMiddleware(RequestDelegate next, IHttpClientFactory clientFactory, IServerUriProvider serverUriProvider)
         {
             _next = next;
             _clientFactory = clientFactory;
-
-            _serverUris = new List<Uri>
-            {
-                new Uri("https://www.microsoft.com/"),
-                new Uri("https://www.apple.com/"),
-                new Uri("https://www.google.com/")
-            };
+            _serverUris = serverUriProvider.GetServerUris();
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -39,7 +34,7 @@ namespace ReverseProxy.Core.Middlewares
             await context.Response.Body.WriteAsync(responseContent, 0, responseContent.Length);
         }
 
-        private static Uri GetNextServerUri()
+        private Uri GetNextServerUri()
         {
             var serverUri = _serverUris[_currentServerIndex];
             _currentServerIndex = (_currentServerIndex + 1) % _serverUris.Count;

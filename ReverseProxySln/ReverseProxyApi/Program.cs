@@ -1,4 +1,6 @@
 
+using ReverseProxy.Core.Classes;
+using ReverseProxy.Core.Interfaces;
 using ReverseProxy.Core.Middlewares;
 using System.Net.Http.Headers;
 
@@ -10,6 +12,7 @@ namespace ReverseProxyApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddSingleton<IServerUriProvider, ConfigurationServerUriProvider>();
             builder.Services.AddHttpClient(nameof(LoadBalancerMiddleware), client =>
             {
                 // Set a timeout for requests
