@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using ReverseProxy.Core.Interfaces;
+using System.Diagnostics.Metrics;
 using System.Net.Http;
 
 namespace ReverseProxy.Core.Middlewares
@@ -37,7 +38,9 @@ namespace ReverseProxy.Core.Middlewares
         private Uri GetNextServerUri()
         {
             var serverUri = _serverUris[_currentServerIndex];
-            _currentServerIndex = (_currentServerIndex + 1) % _serverUris.Count;
+            // Important to handle many concurrent request
+            Interlocked.Increment(ref _currentServerIndex);
+            _currentServerIndex = _currentServerIndex % _serverUris.Count;
             
             return serverUri;
         }
