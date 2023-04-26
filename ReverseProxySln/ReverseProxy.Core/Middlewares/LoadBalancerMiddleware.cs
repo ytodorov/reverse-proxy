@@ -16,13 +16,15 @@ namespace ReverseProxy.Core.Middlewares
         private readonly IDictionary<string, Uri> _serverUris;
         private readonly ILoadBalancerStrategy _loadBalancerStrategy;
         private readonly IStickySession _stickySession;
+        private readonly IHealthCheck _serverHealthCheck;
 
         private readonly string _sessionCookieName = "ReverseProxy_StickySession";
         public LoadBalancerMiddleware(RequestDelegate next,
             IHttpClientFactory clientFactory,
             IServerUriProvider serverUriProvider,
             ILoadBalancerStrategy loadBalancerStrategy,
-            IStickySession stickySession
+            IStickySession stickySession,
+            IHealthCheck serverHealthCheck
             )
         {
             _next = next;
@@ -30,13 +32,33 @@ namespace ReverseProxy.Core.Middlewares
             _serverUris = serverUriProvider.GetServerUris();
             _loadBalancerStrategy = loadBalancerStrategy;
             _stickySession = stickySession;
+            _serverHealthCheck = serverHealthCheck;
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
             try
             {
-                Uri serverUri = _loadBalancerStrategy.GetNextServerUri();
+                // Use healthy server URIs from the ServerHealthCheck instance
+                var healthyServerUris = _serverHealthCheck.GetHealthyServerUris();
+
+                Uri serverUri = null;
+                for (int i = 0; i < healthyServerUris.Count; i++)
+                {
+                    serverUri = _loadBalancerStrategy.GetNextServerUri();
+                    // Check if this Uri is healthy
+                    if (healthyServerUris.Any(s => s.Value == serverUri))
+                    {
+                        break;
+                    }
+                }
+
+                if (serverUri == null)
+                {
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                    var noServers = System.Text.Encoding.UTF8.GetBytes("All backend APIs from the pool are down");
+                    await context.Response.Body.WriteAsync(noServers, 0, noServers.Length);
+                }
 
                 if (_stickySession.IsStickySessionEnabled())
                 {

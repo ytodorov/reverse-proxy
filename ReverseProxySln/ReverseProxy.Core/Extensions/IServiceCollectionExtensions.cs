@@ -17,6 +17,7 @@ namespace ReverseProxy.Core.Extensions
             services.AddSingleton<IServerUriProvider, ConfigurationServerUriProvider>();
             services.AddSingleton<ILoadBalancerStrategy, RoundRobinLoadBalancerStrategy>();
             services.AddSingleton<IStickySession, StickySessionDisabled>();
+            services.AddSingleton<IHealthCheck, ServerHealthCheck>();
             // Change this to the following line to enable sticky sessions
             //services.AddSingleton<IStickySession, StickySessionEnabled>();
 
