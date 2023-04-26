@@ -1,4 +1,4 @@
-﻿namespace SampleApi
+﻿namespace SampleReverseProxy.Core.Classes
 {
     public class ProductViewModel
     {

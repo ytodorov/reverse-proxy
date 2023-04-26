@@ -1,4 +1,4 @@
-using SampleApi;
+using SampleReverseProxy.Core.Classes;
 
 var builder = WebApplication.CreateBuilder(args);
 

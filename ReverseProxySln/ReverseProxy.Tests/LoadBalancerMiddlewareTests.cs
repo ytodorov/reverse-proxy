@@ -21,6 +21,9 @@ using Xunit;
 
 using ReverseProxy.Core.Extensions;
 using Microsoft.Net.Http.Headers;
+using SampleReverseProxy.Core.Classes;
+using System.Text.Json;
+using System.Net.Http.Headers;
 
 namespace ReverseProxy.Tests
 {
@@ -94,6 +97,46 @@ namespace ReverseProxy.Tests
             Assert.Equal(content, content2);
             Assert.Equal(content, content3);
             Assert.Equal(content2, content3);
+        }
+
+        [Fact]
+        public async Task Post_Should_Succeed()
+        {
+            // Arrange
+            using var server = CreateTestServer(true);
+            var client = server.CreateClient();
+
+            var guidForProductName = Guid.NewGuid().ToString();
+            var productModel = new ProductViewModel()
+            {
+                Id = Random.Shared.Next(0, int.MaxValue),
+                Name = guidForProductName,
+                Price = (decimal)Random.Shared.NextDouble(),
+            };
+            StringContent sc = new StringContent(JsonSerializer.Serialize(productModel), Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await client.PostAsync("/product", sc);
+            var content = await response.Content.ReadAsStringAsync();
+
+            var requestMessage = new HttpRequestMessage
+            {
+                RequestUri = new Uri("/product", UriKind.Relative)
+            };
+
+            var cookie = response.Headers.GetValues(HeaderNames.SetCookie);
+            requestMessage.Headers.Add(HeaderNames.Cookie, cookie);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+            var productsResponse = await client.SendAsync(requestMessage);
+            var json = await productsResponse.Content.ReadAsStringAsync();
+            var products = JsonSerializer.Deserialize<List<ProductViewModel>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true } );
+            var newProduct = products?.FirstOrDefault(f => f.Name == guidForProductName);
+
+            Assert.NotNull(newProduct);
+            
         }
 
         private TestServer CreateTestServer(bool useStikySession = false)
