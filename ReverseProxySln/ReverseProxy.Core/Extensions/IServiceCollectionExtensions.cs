@@ -44,6 +44,12 @@ namespace ReverseProxy.Core.Extensions
                 });
             });
 
+            // Add Application Insights services
+            services.AddApplicationInsightsTelemetry(options =>
+            {
+                options.EnableAdaptiveSampling = false;
+            });
+
             services.AddSingleton<IServerUriProvider, ConfigurationServerUriProvider>();
             services.AddSingleton<ILoadBalancerStrategy, RoundRobinLoadBalancerStrategy>();
             services.AddSingleton<IStickySession, StickySessionDisabled>();
