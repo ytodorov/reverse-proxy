@@ -29,6 +29,45 @@ namespace ReverseProxy.Tests
     public class LoadBalancerMiddlewareTests
     {
         [Fact]
+        public async Task ConcurrencyTest()
+        {
+            // Arrange
+            using var server = CreateTestServer();
+            var client = server.CreateClient();
+
+            // Act
+
+            List<Task<HttpResponseMessage>> tasks = new List<Task<HttpResponseMessage>>();
+            for (int i = 0; i < 99; i++)
+            {
+                tasks.Add(client.GetAsync("/"));
+            }
+
+            await Task.WhenAll(tasks);
+
+            List<HttpStatusCode> statusCodeResults = new List<HttpStatusCode>();
+            List<string> responses = new List<string>();
+
+            for (int i = 0; i < 99; i++)
+            {
+                statusCodeResults.Add(tasks[i].Result.StatusCode);
+                responses.Add(await tasks[i].Result.Content.ReadAsStringAsync());
+            }
+
+            Assert.True(statusCodeResults.All(r => r == HttpStatusCode.OK));
+            Assert.True(responses.All(r => r.StartsWith("This request is received on", StringComparison.OrdinalIgnoreCase)));
+
+            //var groups = responses.GroupBy(r => r);
+            //Assert.Equal(3, groups.Count());
+
+            //foreach (var gr in groups)
+            //{
+            //    Assert.Equal(33, gr.Count());
+            //}
+        }
+
+
+        [Fact]
         public async Task RoundRobin_Should_Be_Different()
         {
             // Arrange
@@ -59,13 +98,13 @@ namespace ReverseProxy.Tests
             HttpClient clie = new HttpClient();
 
             var client = server.CreateClient();
-            
-            
+
+
             var requestMessage = new HttpRequestMessage
             {
                 RequestUri = new Uri("/", UriKind.Relative)
             };
-            
+
             // Act
             var response = await client.SendAsync(requestMessage);
             var content = await response.Content.ReadAsStringAsync();
@@ -90,7 +129,7 @@ namespace ReverseProxy.Tests
 
             var response3 = await client.SendAsync(requestMessage);
             var content3 = await response3.Content.ReadAsStringAsync();
-            
+
 
             // Assert
             Assert.Equal(content, content2);
@@ -131,17 +170,17 @@ namespace ReverseProxy.Tests
 
             var productsResponse = await client.SendAsync(requestMessage);
             var json = await productsResponse.Content.ReadAsStringAsync();
-            var products = JsonSerializer.Deserialize<List<ProductViewModel>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true } );
+            var products = JsonSerializer.Deserialize<List<ProductViewModel>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
             var newProduct = products?.FirstOrDefault(f => f.Name == guidForProductName);
 
             Assert.NotNull(newProduct);
-            
+
         }
 
         private TestServer CreateTestServer(bool useStikySession = false)
         {
             var webHostBuilder = new WebHostBuilder()
-                .ConfigureAppConfiguration(s => s.AddJsonFile("appsettings.json"))                
+                .ConfigureAppConfiguration(s => s.AddJsonFile("appsettings.json"))
                 .ConfigureServices(services =>
                 {
                     services.AddLoadBalancer();
