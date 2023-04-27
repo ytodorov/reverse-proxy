@@ -27,6 +27,9 @@ namespace ReverseProxy.Core.Classes
             _serverUriProvider = serverUriProvider;
             _healthCheckIntervalMilliseconds = healthCheckIntervalMilliseconds;
 
+            var initialServerUris = _serverUriProvider.GetServerUris();
+            _serverUris = new ConcurrentDictionary<string, Uri>(initialServerUris);
+
             // Start the timer with the specified interval for health checks
             _timer = new Timer(HealthCheckCallback, null, _healthCheckIntervalMilliseconds, Timeout.Infinite);
         }
@@ -50,7 +53,9 @@ namespace ReverseProxy.Core.Classes
         private async Task CheckServerHealth()
         {
             // It is important always to get the all server uris so we can check if unavailable uri becomes available
-            _serverUris = new ConcurrentDictionary<string, Uri>(_serverUriProvider.GetServerUris());
+            var initialServerUris = _serverUriProvider.GetServerUris();
+
+            _serverUris = new ConcurrentDictionary<string, Uri>(initialServerUris);
             var httpClient = _clientFactory.CreateClient(nameof(ServerHealthCheck));
 
             foreach (var serverUri in _serverUris.Values.ToList())
