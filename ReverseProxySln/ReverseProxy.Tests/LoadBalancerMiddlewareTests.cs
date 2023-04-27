@@ -174,6 +174,76 @@ namespace ReverseProxy.Tests
             var newProduct = products?.FirstOrDefault(f => f.Name == guidForProductName);
 
             Assert.NotNull(newProduct);
+            Assert.Equal(productModel.Name, newProduct.Name);
+        }
+
+        [Fact]
+        public async Task Put_Should_Succeed()
+        {
+            // Arrange
+            using var server = CreateTestServer(true);
+            var client = server.CreateClient();
+
+            var guidForProductName = Guid.NewGuid().ToString();
+            var productModel = new ProductViewModel()
+            {
+                Id = Random.Shared.Next(0, int.MaxValue),
+                Name = guidForProductName,
+                Price = (decimal)Random.Shared.NextDouble(),
+            };
+            StringContent sc = new StringContent(JsonSerializer.Serialize(productModel), Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await client.PostAsync("/product", sc);
+            var content = await response.Content.ReadAsStringAsync();
+
+            var newProduct = JsonSerializer.Deserialize<ProductViewModel>(content, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+
+            var requestMessage = new HttpRequestMessage
+            {
+                RequestUri = new Uri("/product", UriKind.Relative)
+            };
+
+            var cookie = response.Headers.GetValues(HeaderNames.SetCookie);
+            requestMessage.Headers.Add(HeaderNames.Cookie, cookie);
+                                    
+            var guidForUpdatedProductName = Guid.NewGuid().ToString();
+            var productUpdateModel = new ProductViewModel()
+            {
+                Id = Random.Shared.Next(0, int.MaxValue),
+                Name = Guid.NewGuid().ToString(),
+                Price = (decimal)Random.Shared.NextDouble(),
+            };
+            StringContent scForUpdate = new StringContent(JsonSerializer.Serialize(productUpdateModel), Encoding.UTF8, "application/json");
+
+            var requestUpdateMessage = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"/product/{newProduct.Id}", UriKind.Relative),
+                Method = HttpMethod.Put,
+                Content = scForUpdate
+            };
+
+            cookie = response.Headers.GetValues(HeaderNames.SetCookie);
+            requestUpdateMessage.Headers.Add(HeaderNames.Cookie, cookie);
+
+            // Update product
+            await client.SendAsync(requestUpdateMessage);
+
+            var requestGetAllProducts = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"/product", UriKind.Relative),
+            };
+
+            cookie = response.Headers.GetValues(HeaderNames.SetCookie);
+            requestGetAllProducts.Headers.Add(HeaderNames.Cookie, cookie);
+
+            var productsResponse = await client.SendAsync(requestGetAllProducts);
+            var json = await productsResponse.Content.ReadAsStringAsync();
+            var products = JsonSerializer.Deserialize<List<ProductViewModel>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+            var updatedProduct = products?.FirstOrDefault(f => f.Name == productUpdateModel.Name);
+
+            Assert.NotNull(updatedProduct);
+            Assert.Equal(updatedProduct.Name, productUpdateModel.Name);
 
         }
 

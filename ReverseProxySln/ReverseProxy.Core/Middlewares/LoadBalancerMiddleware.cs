@@ -116,7 +116,9 @@ namespace ReverseProxy.Core.Middlewares
 
         private static async Task<HttpContent> GetContent(HttpRequest request)
         {
-            if (request.Body == null || (request.Method != HttpMethods.Post && request.Method != HttpMethods.Put && request.Method != HttpMethods.Delete))
+            if (request.Body == null || request.Body == Stream.Null
+                //|| (request.Method != HttpMethods.Post && request.Method != HttpMethods.Put && request.Method != HttpMethods.Delete)
+                )
             {
                 return null;
             }
