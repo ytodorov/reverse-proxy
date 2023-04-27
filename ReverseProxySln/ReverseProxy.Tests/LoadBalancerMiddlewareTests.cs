@@ -247,6 +247,57 @@ namespace ReverseProxy.Tests
 
         }
 
+        [Fact]
+        public async Task Delete_Should_Succeed()
+        {
+            // Arrange
+            using var server = CreateTestServer(true);
+            var client = server.CreateClient();
+
+            var guidForProductName = Guid.NewGuid().ToString();
+            var productModel = new ProductViewModel()
+            {
+                Id = Random.Shared.Next(0, int.MaxValue),
+                Name = guidForProductName,
+                Price = (decimal)Random.Shared.NextDouble(),
+            };
+            StringContent sc = new StringContent(JsonSerializer.Serialize(productModel), Encoding.UTF8, "application/json");
+
+            // Act
+            var response = await client.PostAsync("/product", sc);
+            var content = await response.Content.ReadAsStringAsync();
+
+            var newProduct = JsonSerializer.Deserialize<ProductViewModel>(content, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+            
+            var requestDeleteMessage = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"/product/{newProduct.Id}", UriKind.Relative),
+                Method = HttpMethod.Delete
+            };
+
+            var cookie = response.Headers.GetValues(HeaderNames.SetCookie);
+            requestDeleteMessage.Headers.Add(HeaderNames.Cookie, cookie);
+
+            // Update product
+            await client.SendAsync(requestDeleteMessage);
+
+            var requestGetAllProducts = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"/product", UriKind.Relative),
+            };
+
+            cookie = response.Headers.GetValues(HeaderNames.SetCookie);
+            requestGetAllProducts.Headers.Add(HeaderNames.Cookie, cookie);
+
+            var productsResponse = await client.SendAsync(requestGetAllProducts);
+            var json = await productsResponse.Content.ReadAsStringAsync();
+            var products = JsonSerializer.Deserialize<List<ProductViewModel>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+            var deletedProduct = products?.FirstOrDefault(f => f.Name == newProduct.Name);
+
+            Assert.Null(deletedProduct);
+
+        }
+
         private TestServer CreateTestServer(bool useStikySession = false)
         {
             var webHostBuilder = new WebHostBuilder()
