@@ -46,7 +46,7 @@ namespace ReverseProxy.Core.Classes
             }
             finally
             {
-                _timer.Change(_healthCheckIntervalMilliseconds, Timeout.Infinite);
+                //_timer.Change(_healthCheckIntervalMilliseconds, Timeout.Infinite);
             }
         }
 
