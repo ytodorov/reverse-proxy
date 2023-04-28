@@ -22,6 +22,11 @@ var products = new List<ProductViewModel>();
 app.MapGet("/", (HttpContext context) => $"This request is received on: MachineName: {Environment.MachineName}, ProcessId: {Environment.ProcessId}," +
 $" RemoteIpAddress: {context.Connection.RemoteIpAddress}, LocalIpAddress: {context.Connection.LocalIpAddress}");
 
+app.MapGet("/health", () => "This service is healhty.");
+
+app.MapGet("/cache", (HttpContext context) => $"This endpoint demonstrates caching. The time now is {DateTime.Now.ToString("o")}" + $"This request is received on: MachineName: {Environment.MachineName}, ProcessId: {Environment.ProcessId}," +
+$" RemoteIpAddress: {context.Connection.RemoteIpAddress}, LocalIpAddress: {context.Connection.LocalIpAddress}");
+
 app.MapGet("/product", () => products);
 
 app.MapPost("/product", (ProductViewModel product) =>
