@@ -62,8 +62,8 @@ namespace ReverseProxy.Core.Classes
             {
                 try
                 {
-                    // Here we can set a specific endpoint for healt checks
-                    // var healthCheckUri = new Uri(serverUri, "/healthcheck");  This is just an example
+                    // Here we can set a specific endpoint for health checks
+                    // var healthCheckUri = new Uri(serverUri, "/health");  This is just an example
                     var healthCheckUri = new Uri(serverUri, "/");
 
                     var response = await httpClient.GetAsync(healthCheckUri);
