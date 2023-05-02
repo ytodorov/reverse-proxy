@@ -2,6 +2,7 @@
 using ReverseProxy.Core.Extensions;
 using ReverseProxy.Core.Interfaces;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,7 +19,7 @@ namespace ReverseProxy.Core.Classes
             _configuration = configuration;
         }
 
-        public IDictionary<string, Uri> GetServerUris()
+        public ConcurrentDictionary<string, Uri> GetServerUris()
         {
             var serverUrisSection = _configuration.GetSection("LoadBalancer:ServerUris");
             if (serverUrisSection == null)
@@ -31,7 +32,7 @@ namespace ReverseProxy.Core.Classes
             {
                 throw new InvalidOperationException("No server URIs configured in the 'LoadBalancer:ServerUris' section.");
             }
-            IDictionary<string, Uri> serverUris = new Dictionary<string, Uri>(serverUriStrings.Count);
+            ConcurrentDictionary<string, Uri> serverUris = new ConcurrentDictionary<string, Uri>(1, serverUriStrings.Count);
             foreach (var uriString in serverUriStrings)
             {
                 if (!Uri.TryCreate(uriString, UriKind.Absolute, out var serverUri))
@@ -41,7 +42,7 @@ namespace ReverseProxy.Core.Classes
                 serverUris[serverUri.ToString().CalculateSHA256()] = serverUri;
             }
 
-            return serverUris.AsReadOnly();
+            return serverUris;
         }
     }
 }

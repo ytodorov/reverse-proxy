@@ -1,7 +1,15 @@
 using SampleReverseProxy.Core.Classes;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (args?.Length == 1)
+{
+    if (int.TryParse(args[0], out int port))
+    {
+        builder.WebHost.UseUrls($"http://localhost:{port}");
+    }
+}
 // Add required services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

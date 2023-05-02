@@ -23,22 +23,88 @@ using Microsoft.Net.Http.Headers;
 using SampleReverseProxy.Core.Classes;
 using System.Text.Json;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
+using System.IO.Compression;
+using System.Diagnostics;
+using CliWrap;
 
 namespace ReverseProxy.Tests
 {
-    public class LoadBalancerMiddlewareTests
+    public class LoadBalancerMiddlewareTests : IDisposable
     {
-        [Fact]
+        private List<int> processIds = new List<int>();
+        private List<string> tempDirs = new List<string>();
+        private List<string> urlList = new List<string>();
+
+        public LoadBalancerMiddlewareTests()
+        {
+            int numberOfBackendApis = 3; // We can easily simulate big number
+            // Extract the zip file to the target directory            
+            for (int i = 1; i <= numberOfBackendApis; i++)
+            {
+                var dirName = Path.Combine(Environment.CurrentDirectory, $"Api{Guid.NewGuid()}");
+                if (!Directory.Exists(dirName))
+                {
+                    Directory.CreateDirectory(dirName);
+                }
+                else
+                {
+                    Directory.Delete(dirName, true);
+                    Directory.CreateDirectory(dirName);
+                }
+                ZipFile.ExtractToDirectory("TestBackendApi.zip", dirName, true);
+
+                var randomFreePort = GetAvailableTcpPort();
+                urlList.Add($"http://localhost:{randomFreePort}");
+                var sampleApiPath = Path.Combine(dirName, "SampleApi.exe");
+
+                var stdOutBuffer = new StringBuilder();
+                var stdErrBuffer = new StringBuilder();
+
+                var command =  Cli.Wrap(sampleApiPath)
+                    .WithArguments(randomFreePort.ToString())
+                    .WithWorkingDirectory(dirName)
+                    .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
+                    .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))
+                    .WithValidation(CommandResultValidation.None)
+                    .ExecuteAsync();
+
+                tempDirs.Add(dirName);
+                processIds.Add(command.ProcessId);
+                                
+                //var stdOut = stdOutBuffer.ToString();
+                //var stdErr = stdErrBuffer.ToString();
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var processId in processIds)
+            {
+                var processToKill = Process.GetProcessById(processId);
+                processToKill.Kill();
+            }
+
+            // Wait a while OS to release the process folder
+            Thread.Sleep(2000);
+
+            foreach (var dirToDelete in tempDirs)
+            {
+                Directory.Delete(dirToDelete, true);
+            }
+        }
+
+
+            [Fact]
         public async Task ConcurrencyTest()
         {
             // Arrange
-            using var server = CreateTestServer();
+            using var server = await CreateTestServer();
             var client = server.CreateClient();
 
             // Act
-
             List<Task<HttpResponseMessage>> tasks = new List<Task<HttpResponseMessage>>();
-            for (int i = 0; i < 99; i++)
+            for (int i = 0; i < byte.MaxValue; i++)
             {
                 tasks.Add(client.GetAsync("/"));
             }
@@ -48,30 +114,23 @@ namespace ReverseProxy.Tests
             List<HttpStatusCode> statusCodeResults = new List<HttpStatusCode>();
             List<string> responses = new List<string>();
 
-            for (int i = 0; i < 99; i++)
+            for (int i = 0; i < byte.MaxValue; i++)
             {
                 statusCodeResults.Add(tasks[i].Result.StatusCode);
                 responses.Add(await tasks[i].Result.Content.ReadAsStringAsync());
             }
 
             Assert.True(statusCodeResults.All(r => r == HttpStatusCode.OK));
-            Assert.True(responses.All(r => r.StartsWith("This request is received on", StringComparison.OrdinalIgnoreCase)));
-
-            //var groups = responses.GroupBy(r => r);
-            //Assert.Equal(3, groups.Count());
-
-            //foreach (var gr in groups)
-            //{
-            //    Assert.Equal(33, gr.Count());
-            //}
+            Assert.True(responses.All(r => r.StartsWith("This request is received on", StringComparison.OrdinalIgnoreCase)));            
         }
 
 
         [Fact]
         public async Task RoundRobin_Should_Be_Different()
-        {
+        {         
+
             // Arrange
-            using var server = CreateTestServer();
+            using var server = await CreateTestServer();
             var client = server.CreateClient();
 
             // Act
@@ -94,7 +153,7 @@ namespace ReverseProxy.Tests
         public async Task RoundRobin_WithStickySession_Should_Be_Equal()
         {
             // Arrange
-            using var server = CreateTestServer(true);
+            using var server = await CreateTestServer(true);
             HttpClient clie = new HttpClient();
 
             var client = server.CreateClient();
@@ -141,7 +200,7 @@ namespace ReverseProxy.Tests
         public async Task Post_Should_Succeed()
         {
             // Arrange
-            using var server = CreateTestServer(true);
+            using var server = await CreateTestServer(true);
             var client = server.CreateClient();
 
             var guidForProductName = Guid.NewGuid().ToString();
@@ -181,7 +240,7 @@ namespace ReverseProxy.Tests
         public async Task Put_Should_Succeed()
         {
             // Arrange
-            using var server = CreateTestServer(true);
+            using var server = await CreateTestServer(true);
             var client = server.CreateClient();
 
             var guidForProductName = Guid.NewGuid().ToString();
@@ -251,7 +310,7 @@ namespace ReverseProxy.Tests
         public async Task Delete_Should_Succeed()
         {
             // Arrange
-            using var server = CreateTestServer(true);
+            using var server = await CreateTestServer(true);
             var client = server.CreateClient();
 
             var guidForProductName = Guid.NewGuid().ToString();
@@ -298,13 +357,25 @@ namespace ReverseProxy.Tests
 
         }
 
-        private TestServer CreateTestServer(bool useStikySession = false)
+        private async Task<TestServer> CreateTestServer(bool useStikySession = false)
         {
+            var urlsDictionary = new System.Collections.Concurrent.ConcurrentDictionary<string, Uri>();
+
+            foreach (var url in urlList)
+            {
+                urlsDictionary.TryAdd(url.CalculateSHA256(), new Uri(url));
+            }
+
+            var mockServerUriProvider = new Mock<IServerUriProvider>();
+            mockServerUriProvider.Setup(provider => provider.GetServerUris())
+                .Returns(urlsDictionary);
+
             var webHostBuilder = new WebHostBuilder()
                 .ConfigureAppConfiguration(s => s.AddJsonFile("appsettings.json"))
                 .ConfigureServices(services =>
                 {
                     services.AddLoadBalancer();
+                    services.AddSingleton<IServerUriProvider>(mockServerUriProvider.Object);
                     if (useStikySession)
                     {
                         services.AddSingleton<IStickySession, StickySessionEnabled>();
@@ -320,6 +391,20 @@ namespace ReverseProxy.Tests
                 });
 
             return new TestServer(webHostBuilder);
+        }
+
+        private static int GetAvailableTcpPort()
+        {
+            int availablePort;
+
+            using (Socket tempSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                tempSocket.Bind(new IPEndPoint(IPAddress.Any, 0));
+                availablePort = ((IPEndPoint)tempSocket.LocalEndPoint).Port;
+                tempSocket.Close();
+            }
+
+            return availablePort;
         }
     }
 }
